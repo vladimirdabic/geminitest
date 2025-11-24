@@ -10,6 +10,12 @@ import {
     Toast,
     Spinner 
 } from 'react-bootstrap';
+import Markdown from "react-markdown";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+
+// KaTeX CSS
+import "katex/dist/katex.min.css";
 
 const api = import.meta.env.VITE_BACKEND_URL;
 type Sender = "user" | "recipient";
@@ -27,13 +33,16 @@ class Message {
 function App() {
     const [waiting, setWaiting] = useState(false);
     const [prompt, setPrompt] = useState("");
-    const [messages, setMessages] = useState<Message[]>([
-        new Message("lol", "recipient")
-    ]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const chatEndRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if(chatEndRef.current) {
+            chatEndRef.current.scrollTo({
+                top: chatEndRef.current.scrollHeight,
+                behavior: "smooth"
+            });
+        }
     }, [messages]);
 
     const sendMessage = function() {
@@ -50,7 +59,8 @@ function App() {
             },
             body: JSON.stringify({
                 message: prompt.trim()
-            })
+            }),
+            credentials: "include"
         })
         .then(resp => resp.json())
         .then(data => {
@@ -61,7 +71,7 @@ function App() {
 
     return (
         <>
-            <Container fluid className="history">
+            <Container fluid className="history" ref={chatEndRef}>
                 <Row className="justify-content-center">
                     <Col className="d-flex flex-column">
                         <Stack gap={2}>
@@ -69,16 +79,20 @@ function App() {
                                 key={i}
                                 className={`d-flex ${msg.sender === "user" ? "justify-content-end" : "justify-content-start"}`}
                             >
-                                <Toast>
+                                <Toast className="message">
                                     <Toast.Header closeButton={false}>
                                        <strong className='me-auto'>{msg.sender === "user" ? "You" : "Response"}</strong>
                                     </Toast.Header>
                                     <Toast.Body>
-                                        {msg.text}
+                                        <Markdown
+                                            remarkPlugins={[remarkMath]}
+                                            rehypePlugins={[rehypeKatex]}
+                                        >
+                                            {msg.text}
+                                        </Markdown>
                                     </Toast.Body>
                                 </Toast>
                             </div>)}
-                            <div ref={chatEndRef} />
                         </Stack>
                     </Col>
                 </Row>

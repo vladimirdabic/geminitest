@@ -6,3 +6,9 @@
     border: 1px solid #ddd;
     padding: 10px;
 }
+
+.message {
+    max-width: fit-content;
+    width: auto;
+    min-width: 200px;
+}
