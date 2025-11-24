@@ -1,0 +1,8 @@
+.history {
+    height: 90vh;
+    max-height: 90vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+}
