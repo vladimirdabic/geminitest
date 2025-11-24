@@ -42,7 +42,7 @@ function App() {
 
         setWaiting(true);
         
-        fetch("http://127.0.0.1:8000/prompt", {
+        fetch("http://localhost:8000/prompt", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
