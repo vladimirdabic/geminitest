@@ -11,7 +11,7 @@ import {
     Spinner 
 } from 'react-bootstrap';
 
-const api = import.meta.env.BACKEND_API_URL;
+const api = import.meta.env.VITE_BACKEND_URL;
 type Sender = "user" | "recipient";
 
 class Message {
