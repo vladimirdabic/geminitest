@@ -11,6 +11,7 @@ import {
     Spinner 
 } from 'react-bootstrap';
 
+const api = import.meta.env.BACKEND_API_URL;
 type Sender = "user" | "recipient";
 
 class Message {
@@ -42,7 +43,7 @@ function App() {
 
         setWaiting(true);
         
-        fetch("http://localhost:8000/prompt", {
+        fetch(`${api}/prompt`, {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json',
