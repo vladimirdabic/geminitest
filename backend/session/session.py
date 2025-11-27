@@ -34,6 +34,7 @@ class SessionStorage:
         agent_session_id = f"{session_id}_{agent_type}"
 
         if agent_session_id in self.sessions:
+            self.sessions[agent_session_id].last_access = time.time()
             return self.sessions[agent_session_id]
 
         # TODO: Better model selection handling

@@ -23,14 +23,15 @@ client = genai.Client(api_key=os.getenv("API_KEY"))
 session_storage = SessionStorage(client=client)
 
 @app.get("/")
-def read_root():
+def get_root():
     return {"Hello": "World"}
 
 @app.post("/prompt", response_model=AgentResponse)
-def update_item(req: Request, resp: Response, prompt: AgentPrompt):
+async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
     session_id = req.cookies.get("session_id")
     if not session_id:
-        resp.set_cookie('session_id', value=str(uuid4()), max_age=86400, samesite='lax')
+        session_id = str(uuid4())
+        resp.set_cookie('session_id', value=session_id, max_age=86400, samesite='lax')
 
     expert_session = session_storage.get_or_new(
         session_id,

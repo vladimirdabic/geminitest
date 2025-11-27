@@ -27,7 +27,7 @@ class JudgeResponse(BaseModel):
 
             return JudgeResponse(
                 score=5,
-                verdict="APPROVE",
+                verdict="APPROVED",
                 overall_feedback="Judge response parsing failed",
                 recommended_changes="None"
             )
