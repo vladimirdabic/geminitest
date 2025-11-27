@@ -1,9 +1,18 @@
 from dataclasses import dataclass
 from google.genai import chats, Client, types
 from typing import Dict
+from pydantic import BaseModel
+from .judge import JudgeResponse
 import time
 
 
+class AgentPrompt(BaseModel):
+    message: str
+
+class AgentResponse(BaseModel):
+    message: str
+    judge_data: JudgeResponse
+    
 @dataclass
 class Session:
     last_access: float
@@ -20,11 +29,12 @@ class SessionStorage:
         self.client = client
         self.ttl = ttl
 
-    def get_or_new(self, session_id: str, instructions: str = None) -> Session:
+    def get_or_new(self, session_id: str, instructions: str = None, agent_type: str = "expert") -> Session:
         self._cleanup()
+        agent_session_id = f"{session_id}_{agent_type}"
 
-        if session_id in self.sessions:
-            return self.sessions[session_id]
+        if agent_session_id in self.sessions:
+            return self.sessions[agent_session_id]
 
         # TODO: Better model selection handling
         chat = self.client.chats.create(
@@ -34,7 +44,7 @@ class SessionStorage:
             ) if instructions is not None else None
         )
         session = Session(last_access=time.time(), chat=chat, instructions=instructions)
-        self.sessions[session_id] = session
+        self.sessions[agent_session_id] = session
         
         return session
 
