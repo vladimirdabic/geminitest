@@ -8,7 +8,8 @@ import {
     Stack,
     Form,
     Toast,
-    Spinner 
+    Spinner, 
+    Modal
 } from 'react-bootstrap';
 import Markdown from "react-markdown";
 import remarkMath from "remark-math";
@@ -20,14 +21,23 @@ import "katex/dist/katex.min.css";
 const api = import.meta.env.VITE_BACKEND_URL;
 type Sender = "user" | "recipient";
 
-class Message {
-    public text: string;
-    public sender: Sender;
+interface JudgeResponse {
+    verdict: string;
+    score: number;
+    overall_feedback: string;
+    recommended_changes: string;
+}
 
-    public constructor(text: string, sender: Sender) {
-        this.text = text;
-        this.sender = sender;
-    }
+interface Message {
+    text: string;
+    sender: Sender;
+    judge_data?: JudgeResponse;
+}
+
+interface ModalData {
+    shown: boolean;
+    title?: string;
+    body?: React.ReactNode;
 }
 
 function App() {
@@ -35,6 +45,7 @@ function App() {
     const [prompt, setPrompt] = useState("");
     const [messages, setMessages] = useState<Message[]>([]);
     const chatEndRef = useRef<HTMLDivElement | null>(null);
+    const [modalData, setModalData] = useState<ModalData>({shown: false});
 
     useEffect(() => {
         if(chatEndRef.current) {
@@ -47,7 +58,7 @@ function App() {
 
     const sendMessage = function() {
         if (prompt.trim() === "") return;
-        setMessages(prev => [...prev, new Message(prompt, "user")]);
+        setMessages(prev => [...prev, {text: prompt, sender: "user"}]);
         setPrompt("");
 
         setWaiting(true);
@@ -64,7 +75,7 @@ function App() {
         })
         .then(resp => resp.json())
         .then(data => {
-            setMessages(prev => [...prev, new Message(data["message"], "recipient")])
+            setMessages(prev => [...prev, {text: data["message"], sender: "recipient", judge_data: data["judge_data"]}])
             setWaiting(false);
         })
     }
@@ -82,6 +93,21 @@ function App() {
                                 <Toast className="message">
                                     <Toast.Header closeButton={false}>
                                        <strong className='me-auto'>{msg.sender === "user" ? "You" : "Response"}</strong>
+                                       {(msg.sender == "recipient") && 
+                                        <Button 
+                                            variant="outline-secondary"
+                                            onClick={(_) => setModalData({
+                                                shown: true,
+                                                title: "Dodatne informacije",
+                                                body: <>
+                                                    <p><strong>VERDICT</strong>: {msg.judge_data?.verdict}</p>
+                                                    <p><strong>SCORE</strong>: {msg.judge_data?.score}/10</p>
+                                                    <p><strong>FEEDBACK</strong>: {msg.judge_data?.overall_feedback}</p>
+                                                    <p><strong>CHANGES</strong>: {msg.judge_data?.recommended_changes}</p>
+                                                </>
+                                            })}
+                                        >?</Button>
+                                       }
                                     </Toast.Header>
                                     <Toast.Body>
                                         <Markdown
@@ -127,6 +153,25 @@ function App() {
                     </Col>
                 </Row>
             </Container>
+
+            <Modal
+                show={modalData.shown}
+                onHide={() => setModalData({shown: false})}
+                backdrop="static"
+                keyboard={false}
+            >
+                <Modal.Header closeButton>
+                    <Modal.Title>{modalData.title}</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    {modalData.body}
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setModalData({shown: false})}>
+                        Close
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </>
     )
 }

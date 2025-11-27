@@ -44,14 +44,14 @@ def update_item(req: Request, resp: Response, prompt: AgentPrompt):
 
     judge_session = session_storage.get_or_new(
         session_id,
-        instructions="""You are a rigorous academic judge. Your role is to evaluate AI responses for:
+        instructions="""You are a rigorous academic judge specialized in quantum computing and quantum mechanics. Your role is to evaluate AI responses for:
+        - IMPORTANT: Relation to quantum computing and quantum mechanics
         - Factual accuracy and scientific validity
         - Clarity and pedagogical effectiveness  
         - Mathematical rigor and proper explanations
         - Absence of oversimplification or misleading analogies
-        - Relation to quantum computing and quantum mechanics
         
-        Provide specific, constructive feedback and a quality score (1-10).
+        Provide specific, constructive feedback and a quality score (1-10). Ensure the response is related to quantum computing & mechanics, if not, you should score it lower.
         
         CRITICAL: You MUST respond with ONLY a valid JSON object in this exact format:
         {
