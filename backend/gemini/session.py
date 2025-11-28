@@ -17,7 +17,7 @@ Provide specific, constructive feedback and a quality score according to the str
 def validator(for_session: Session, validator: Session, prompt: str = DEFAULT_VALIDATOR_PROMPT):
     def decorator(func):
         if not any(existing == validator for existing, _, _ in for_session.validators):
-            return for_session.validators.append((validator, prompt, func))
+            for_session.validators.append((validator, prompt, func))
 
         return func
     return decorator
