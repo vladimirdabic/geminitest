@@ -65,9 +65,9 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
         agent_type="judge"
     )
 
-    @validator(id="academic_judge", for_session=expert_session, validator=judge_session)
-    def expert_response_validator(judge_response: GenerateContentResponse):
-        parsed_response = JudgeResponse.from_json(judge_response.text)
+    @validator(id="academic_judge", for_session=expert_session, validator_session=judge_session)
+    def expert_response_validator(validator_response: GenerateContentResponse, expert_response: GenerateContentResponse, prompt: str):
+        parsed_response = JudgeResponse.from_json(validator_response.text)
 
         match parsed_response.verdict:
             case "APPROVED":
@@ -90,7 +90,7 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
                 - Overall Feedback: {parsed_response.overall_feedback}
                 - Specific Changes Requested: {parsed_response.recommended_changes}
 
-                Please provide a completely new, improved response to: {prompt.message}
+                Please provide a completely new, improved response to: {prompt}
                 """, parsed_response
 
     expert_response, judge_data = expert_session.send_message(message=prompt.message)
