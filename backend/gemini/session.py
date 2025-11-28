@@ -1,8 +1,9 @@
 from __future__ import annotations
-from functools import wraps
 from dataclasses import dataclass
 from google.genai import chats, Client, types
 from typing import Dict, List, Optional, Tuple, Callable
+from queue import Queue
+import threading
 import time
 
 
@@ -50,22 +51,57 @@ class Session:
 
     def send_message(self, message: str) -> Tuple[chats.GenerateContentResponse, Dict[str, object]]:
         response = self.chat.send_message(message=message)
+
+        if not self.validators:
+            return response, {}
+        
+        out_queue = Queue()
+        threads = []
+
+        for validator in self.validators:
+            t = threading.Thread(
+                target=self.__run_validator_thread,
+                args=(validator, message, response, out_queue)
+            )
+
+            threads.append(t)
+            t.start()
+
+        # Cekanje svih validatora
+        for t in threads:
+            t.join()
+            
+        corrections = []
         validator_data = {}
 
-        if len(self.validators) != 0:
-            for validator in self.validators:
-                # TODO: Multithreading i cekati da se svi zavrse, pa zatim napraviti
-                # prompt sa svim zajednickim feedbackom i poslati nazad
-                resp, _ = validator.session.send_message(message=validator.prompt.format(message=message, response=response.text))
+        while not out_queue.empty():
+            vid, correction_prompt, data = out_queue.get()
+            validator_data[vid] = data
 
-                correction_prompt, data = validator.validate_func(resp, response, message)
-                validator_data[validator.id] = data
+            if correction_prompt is not None:
+                corrections.append(correction_prompt)
 
-                if correction_prompt is not None:
-                    response = self.chat.send_message(message=correction_prompt)
+        if corrections:
+            master_prompt = (
+                "Multiple reviewers have provided feedback:\n\n" +
+                "\n\n".join(corrections) +
+                "\n\nPlease revise your previous answer accordingly."
+            )
+            response = self.chat.send_message(master_prompt)
 
-        #print(validator_data, self.validators)
         return response, validator_data
+    
+    def __run_validator_thread(self, validator: Validator, message: str, response: chats.GenerateContentResponse, out_queue: Queue):
+        prompt = validator.prompt.format(message=message, response=response.text)
+        validator_resp, _ = validator.session.send_message(prompt)
+
+        correction_prompt, data = validator.validate_func(
+            validator_resp,
+            response,
+            message
+        )
+
+        out_queue.put((validator.id, correction_prompt, data))
 
 class SessionStorage:
     sessions: Dict[str, Session]
