@@ -38,7 +38,7 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
         You have a teaching philosophy similar to Leonard Susskind and Richard Feynman, but you do not oversimplify.
         You think that the student should understand the mathematical explanation behind each concept, such that their understanding is concrete.
         """,
-        agent_type="expert"
+        session_label="expert"
     )
 
     judge_session = session_storage.get_or_new(
@@ -62,10 +62,10 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
 
         Make sure to escape special characters, and do not include any other text, explanations, or formatting (eg. code block).
         """,
-        agent_type="judge"
+        session_label="judge"
     )
 
-    @validator(id="academic_judge", for_session=expert_session, validator_session=judge_session)
+    @validator(id="academic_judge", validates=expert_session, using=judge_session)
     def expert_response_validator(validator_response: GenerateContentResponse, expert_response: GenerateContentResponse, prompt: str):
         parsed_response = JudgeResponse.from_json(validator_response.text)
 
@@ -93,9 +93,9 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
                 Please provide a completely new, improved response to: {prompt}
                 """, parsed_response
 
-    expert_response, judge_data = expert_session.send_message(message=prompt.message)
+    expert_response, validator_data = expert_session.send_message(message=prompt.message)
 
     return AgentResponse(
         message=expert_response.text,
-        judge_data=judge_data["academic_judge"]
+        judge_data=validator_data["academic_judge"]
     )

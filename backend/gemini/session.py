@@ -15,12 +15,12 @@ AI RESPONSE: {response}
 Provide specific, constructive feedback and a quality score according to the structure you were instructed to.
 """
 
-def validator(id: str, for_session: Session, validator_session: Session, prompt: str = DEFAULT_VALIDATOR_PROMPT):
+def validator(id: str, validates: Session, using: Session, prompt: str = DEFAULT_VALIDATOR_PROMPT):
     def decorator(func):
-        if not any(existing.session == validator_session or existing.id == id for existing in for_session.validators):
-            for_session.validators.append(Validator(
+        if not any(existing.session == using or existing.id == id for existing in validates.validators):
+            validates.validators.append(Validator(
                 id=id,
-                session=validator_session,
+                session=using,
                 prompt=prompt,
                 validate_func=func
             ))
@@ -117,9 +117,9 @@ class SessionStorage:
         elif client is not None:
             self.client = client
 
-    def get_or_new(self, session_id: str, instructions: str = None, agent_type: str = "expert") -> Session:
+    def get_or_new(self, session_id: str, instructions: str = None, session_label: str = "expert") -> Session:
         self._cleanup()
-        agent_session_id = f"{session_id}_{agent_type}"
+        agent_session_id = f"{session_id}_{session_label}"
 
         if agent_session_id in self.sessions:
             self.sessions[agent_session_id].last_access = time.time()
