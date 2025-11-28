@@ -2,6 +2,12 @@ from __future__ import annotations
 from pydantic import BaseModel
 import json
 
+class AgentPrompt(BaseModel):
+    message: str
+
+class AgentResponse(BaseModel):
+    message: str
+    judge_data: JudgeResponse
 
 class JudgeResponse(BaseModel):
     verdict: str

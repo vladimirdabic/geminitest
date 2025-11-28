@@ -1,11 +1,10 @@
 from fastapi import FastAPI, Request, Response
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from google import genai
-#from google.genai import types
+from google.genai.chats import GenerateContentResponse
 from uuid import uuid4
-from session import SessionStorage, JudgeResponse, AgentPrompt, AgentResponse
+from gemini import SessionStorage, validator
+from models import JudgeResponse, AgentPrompt, AgentResponse
 import os
 
 load_dotenv()
@@ -19,8 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-client = genai.Client(api_key=os.getenv("API_KEY"))
-session_storage = SessionStorage(client=client)
+session_storage = SessionStorage(api_key=os.getenv("API_KEY"))
 
 @app.get("/")
 def get_root():
@@ -67,25 +65,15 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
         agent_type="judge"
     )
 
-    # Prosledi odgovor od prvog na drugi
-    expert_response = expert_session.chat.send_message(message=prompt.message)
-    judge_response = judge_session.chat.send_message(message=f"""
-        Evaluate this expert response to the user's question:
-        
-        USER QUESTION: {prompt.message}
-        EXPERT RESPONSE: {expert_response.text}
-        
-        Provide specific, constructive feedback and a quality score in the JSON object you were instructed to.
-    """)
+    @validator(for_session=expert_session, validator=judge_session)
+    def expert_response_validator(judge_response: GenerateContentResponse):
+        parsed_response = JudgeResponse.from_json(judge_response.text)
 
-    parsed_response = JudgeResponse.from_json(judge_response.text)
-
-    match parsed_response.verdict:
-        case "APPROVED":
-            pass
-        case "REVISE":
-            expert_response = expert_session.chat.send_message(
-                message=f"""Your response needs revisions based on feedback:
+        match parsed_response.verdict:
+            case "APPROVED":
+                return None, parsed_response
+            case "REVISE":
+                return f"""Your response needs revisions based on feedback:
 
                 FEEDBACK:
                 - Overall Score: {parsed_response.score}/10
@@ -93,11 +81,9 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
                 - Specific Changes Requested: {parsed_response.recommended_changes}
 
                 Please revise your previous response accordingly while maintaining the core content.
-                """
-            )
-        case "REJECTED":
-            expert_response = expert_session.chat.send_message(
-                message=f"""Your response was REJECTED by based on feedback:
+                """, parsed_response
+            case "REJECTED":
+                return f"""Your response was REJECTED by based on feedback:
 
                 FEEDBACK:
                 - Overall Score: {parsed_response.score}/10
@@ -105,10 +91,11 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
                 - Specific Changes Requested: {parsed_response.recommended_changes}
 
                 Please provide a completely new, improved response to: {prompt.message}
-                """
-            )
+                """, parsed_response
+
+    expert_response, judge_data = expert_session.send_message(message=prompt.message)
 
     return AgentResponse(
         message=expert_response.text,
-        judge_data=parsed_response
+        judge_data=judge_data[0]
     )
