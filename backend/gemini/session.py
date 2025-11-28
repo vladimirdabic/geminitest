@@ -14,10 +14,10 @@ AI RESPONSE: {response}
 Provide specific, constructive feedback and a quality score according to the structure you were instructed to.
 """
 
-def validator(for_session: Session, validator: Session, prompt: str = DEFAULT_VALIDATOR_PROMPT):
+def validator(id: str, for_session: Session, validator: Session, prompt: str = DEFAULT_VALIDATOR_PROMPT):
     def decorator(func):
-        if not any(existing == validator for existing, _, _ in for_session.validators):
-            for_session.validators.append((validator, prompt, func))
+        if not any(existing_validator == validator or existing_id == id for existing_id, existing_validator, _, _ in for_session.validators):
+            for_session.validators.append((id, validator, prompt, func))
 
         return func
     return decorator
@@ -27,24 +27,26 @@ class Session:
     last_access: float
     chat: chats.Chat
     instructions: Optional[str] = None
-    validators: Optional[List[Tuple[Session, str, Callable[[chats.GenerateContentResponse,], str]]]] = None
+    validators: Optional[List[
+        Tuple[str, Session, str, Callable[[chats.GenerateContentResponse,], str]]
+    ]] = None
 
     def __post_init__(self):
         if self.validators is None:
             self.validators = []
 
-    def send_message(self, message: str) -> Tuple[chats.GenerateContentResponse, List[object]]:
+    def send_message(self, message: str) -> Tuple[chats.GenerateContentResponse, Dict[str, object]]:
         response = self.chat.send_message(message=message)
-        validator_data = []
+        validator_data = {}
 
         if len(self.validators) != 0:
-            for validator, prompt, validation_func in self.validators:
+            for vid, validator, prompt, validation_func in self.validators:
                 # TODO: Multithreading i cekati da se svi zavrse, pa zatim napraviti
                 # prompt sa svim zajednickim feedbackom i poslati nazad
                 resp, _ = validator.send_message(message=prompt.format(message=message, response=response.text))
 
                 correction_prompt, data = validation_func(resp)
-                validator_data.append(data)
+                validator_data[vid] = data
 
                 if correction_prompt is not None:
                     response = self.chat.send_message(message=correction_prompt)

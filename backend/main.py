@@ -65,7 +65,7 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
         agent_type="judge"
     )
 
-    @validator(for_session=expert_session, validator=judge_session)
+    @validator(id="academic_judge", for_session=expert_session, validator=judge_session)
     def expert_response_validator(judge_response: GenerateContentResponse):
         parsed_response = JudgeResponse.from_json(judge_response.text)
 
@@ -97,5 +97,5 @@ async def post_prompt(req: Request, resp: Response, prompt: AgentPrompt):
 
     return AgentResponse(
         message=expert_response.text,
-        judge_data=judge_data[0]
+        judge_data=judge_data["academic_judge"]
     )
